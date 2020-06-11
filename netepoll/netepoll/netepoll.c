@@ -9,13 +9,13 @@ int main(int argc, char **argv)
     int    n_ready;
     struct epoll_event events[MAX_EVENTS];
 
-    /* ÆÁ±ÎĞÅºÅÁ¿ */
+    /* å±è”½ä¿¡å·é‡ */
     for (i = 0; i < 32; i++)
     {
         signal(i,SIG_IGN);
     }
 
-    /* ¶ÁÈ¡ÅäÖÃÎÄ¼ş */
+    /* è¯»å–é…ç½®æ–‡ä»¶ */
     if ( getInit(argc, argv) )
     {
         fprintf(stderr, "getInit error!\n");
@@ -28,9 +28,9 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    //³õÊ¼»¯eventÊı¾İ
+    //åˆå§‹åŒ–eventæ•°æ®
     memset(Ep_events, 0, sizeof(Ep_events));
-    Ep_fd = epoll_create(MAX_EVENTS);                         //´´½¨ºìºÚÊ÷,·µ»Ø¸øÈ«¾Ö±äÁ¿Ep_fd;
+    Ep_fd = epoll_create(MAX_EVENTS);                         //åˆ›å»ºçº¢é»‘æ ‘,è¿”å›ç»™å…¨å±€å˜é‡Ep_fd;
     if (Ep_fd <= 0)
     { 
         D_LOG("create Ep_fd error:[%d-%s]", errno, strerror(errno));
@@ -38,13 +38,13 @@ int main(int argc, char **argv)
         return -1;
     }
 	
-    /*³õÊ¼»¯¼àÌısocket*/
+    /*åˆå§‹åŒ–ç›‘å¬socket*/
     initlistensocket(Ep_fd, HostPort);
 
     while (1)
     {
-        /*¼àÌıºìºÚÊ÷,½«Âú×ãÌõ¼şµÄÎÄ¼şÃèÊö·û¼ÓÖÁEp_eventsÊı×é*/ 
-        n_ready = epoll_wait(Ep_fd, events, MAX_EVENTS, -1); //1ÃëÃ»ÊÂ¼şÂú×ãÔò·µ»Ø0
+        /*ç›‘å¬çº¢é»‘æ ‘,å°†æ»¡è¶³æ¡ä»¶çš„æ–‡ä»¶æè¿°ç¬¦åŠ è‡³Ep_eventsæ•°ç»„*/ 
+        n_ready = epoll_wait(Ep_fd, events, MAX_EVENTS, -1); //1ç§’æ²¡äº‹ä»¶æ»¡è¶³åˆ™è¿”å›0
         if (n_ready < 0)
         {
             D_LOG("epoll_wait error, exit[%d-%s]", errno, strerror(errno));
@@ -53,10 +53,11 @@ int main(int argc, char **argv)
 
         for (i=0; i<n_ready; i++)
         {
+            //æ ¹æ®éœ€è¦æ·»åŠ å¤šä¸ªå›è°ƒå‡½æ•°
             struct my_events *ev = (struct my_events *)events[i].data.ptr;
-            if ((events[i].events & EPOLLIN) && (ev->m_event & EPOLLIN))  //¶Á¾ÍĞ÷ÊÂ¼ş
+            if ((events[i].events & EPOLLIN) && (ev->m_event & EPOLLIN))  //è¯»å°±ç»ªäº‹ä»¶
                ev->call_back(ev->m_fd, events[i].events, ev->m_arg);
-            if ((events[i].events & EPOLLOUT) && (ev->m_event & EPOLLOUT))  //¶Á¾ÍĞ÷ÊÂ¼ş
+            if ((events[i].events & EPOLLOUT) && (ev->m_event & EPOLLOUT))  //è¯»å°±ç»ªäº‹ä»¶
                ev->call_back(ev->m_fd, events[i].events, ev->m_arg);
         }
     }
