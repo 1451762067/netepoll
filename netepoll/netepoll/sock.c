@@ -84,8 +84,8 @@ void acceptconnect(int listen_fd, int event, void *arg)
 
     return ;
 }
-/*接收数据*/
 
+/*接收数据*/
 void recvdata(int client_fd, int event, void *arg)
 {
     int              len =0 ;
