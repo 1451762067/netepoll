@@ -90,7 +90,6 @@ void recvdata(int client_fd, int event, void *arg)
 {
     int              len =0 ;
     struct my_events *ev = (struct my_events *)arg;
-    struct my_events *nev;
     DATA_RET         ret;
      
     len = recv(client_fd, ev->m_rcv_buf + ev->m_rcv_buf_len,  \
@@ -105,24 +104,15 @@ void recvdata(int client_fd, int event, void *arg)
         ret = testpacket(ev);  //判断数据完整性
         if(ret == DATA_COMPLETE)  //数据接收完成
         {
-            //分配新结构，原来的结构将释放
-            if ((nev = (struct my_events*) malloc(sizeof(struct my_events))) != NULL)
+            //这里依然需要new 一个新的ev结构作为参数传递给线程池，
+            // 因为线程池在处理任务的 ev结构有可能在外面被销毁
+            if (threadpool_add(TaskPool, &mytask, (void*)ev, 0) < 0)
             {
-                memcpy(nev, ev, sizeof(struct my_events));
-                if (threadpool_add(TaskPool, &mytask, (void*)nev, 0) < 0)
-                {
-                    free((void*)nev);
-                    close(ev->m_fd); //fd在任务中被关掉，                                   
-                    E_LOG("任务添加到线程池失败");
-                }
-                D_LOG("任务添加到线程池成功");
+                close(ev->m_fd); //fd在任务中被关掉， 
+                eventdel(Ep_fd, ev);
+                E_LOG("任务添加到线程池失败");
             }
-            else
-            {
-                close(ev->m_fd);
-                D_LOG("malloc失败:[%d-%s]", errno, strerror(errno));
-            }
-            eventdel(Ep_fd, ev);
+            D_LOG("任务添加到线程池成功");
         }
         else if (ret == DATA_ERROR)
         {
