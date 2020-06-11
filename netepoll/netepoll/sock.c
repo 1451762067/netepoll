@@ -90,7 +90,8 @@ void recvdata(int client_fd, int event, void *arg)
 {
     int              len =0 ;
     struct my_events *ev = (struct my_events *)arg;
-    struct my_events* nev;
+    struct my_events *nev;
+    DATA_RET         ret;
      
     len = recv(client_fd, ev->m_rcv_buf + ev->m_rcv_buf_len,  \
                 sizeof(ev->m_rcv_buf) - ev->m_rcv_buf_len, 0);
@@ -101,20 +102,16 @@ void recvdata(int client_fd, int event, void *arg)
         D_LOG("收到新数据:");
 	    D_LOG(HEX_FORMAT, ev->m_rcv_buf , ev->m_rcv_buf_len); 
 
-        len = ev->m_rcv_buf[0] * 256 + ev->m_rcv_buf[1];
-        if(len == (ev->m_rcv_buf_len - 2) ) // recv finish
+        ret = testpacket(ev);  //判断数据完整性
+        if(ret == DATA_COMPLETE)  //数据接收完成
         {
-            D_LOG("数据接收结束:");
-            D_LOG(HEX_FORMAT, ev->m_rcv_buf, ev->m_rcv_buf_len);
-
-
             //分配新结构，原来的结构将释放
             if ((nev = (struct my_events*) malloc(sizeof(struct my_events))) != NULL)
             {
                 memcpy(nev, ev, sizeof(struct my_events));
                 if (threadpool_add(TaskPool, &mytask, (void*)nev, 0) < 0)
                 {
-                    free((void *)nev);
+                    free((void*)nev);
                     close(ev->m_fd); //fd在任务中被关掉，                                   
                     E_LOG("任务添加到线程池失败");
                 }
@@ -125,21 +122,15 @@ void recvdata(int client_fd, int event, void *arg)
                 close(ev->m_fd);
                 D_LOG("malloc失败:[%d-%s]", errno, strerror(errno));
             }
-        
-            eventdel(Ep_fd, ev);   
-            //eventdel(Ep_fd, ev);    //remove read event                                    
-            //eventsetinit(ev, client_fd, senddata, ev);    //add write event
-            //eventadd(Ep_fd, EPOLLOUT, ev); 
+            eventdel(Ep_fd, ev);
         }
-        else if(len < (ev->m_rcv_buf_len - 2) )
-        { 
+        else if (ret == DATA_ERROR)
+        {
             close(ev->m_fd);
             eventdel(Ep_fd, ev);    //remove read event                                    
-            E_LOG("[%d > %d] 长度超出", len, ev->m_rcv_buf_len - 2);
         }
-        else
+        else if(ret == DATA_CONTINUE)
         {
-            D_LOG("数据结构未结束，将继续...");
         }
     }
     else if (len == 0)
@@ -182,7 +173,7 @@ void senddata(int client_fd, int event, void *arg)
     {
         close(ev->m_fd);
         eventdel(Ep_fd, ev);
-        E_LOG(" send[fd=%d] error ", client_fd);
+        E_LOG("send[fd=%d] error ", client_fd);
     }
     return ;
 }

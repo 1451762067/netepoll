@@ -43,6 +43,12 @@
 #define THREAD 32
 #define QUEUE  256
 
+typedef enum {
+    DATA_COMPLETE,
+    DATA_ERROR,
+    DATA_CONTINUE
+}DATA_RET;
+
 struct my_events {
   
     int        m_fd;                                         //监听的文件描述符
@@ -105,5 +111,7 @@ void recvdata(int client_fd, int event, void *arg);
 void acceptconnect(int listen_fd, int event, void *arg);
 /* 任务函数 */
 void mytask(void* arg);
+/* 数据完成性判断 */
+DATA_RET testpacket(struct my_events* ev);
 
 #endif /*  _NETEPOLL_H_ */
